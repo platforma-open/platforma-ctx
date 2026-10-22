@@ -38,7 +38,7 @@ pnpm install
 ```
 
 - Use `pnpm dlx`, not `npx`. With `npx` it fails with `ENOENT ... templates/static/root/.gitignore`.
-- `--with-software --platform python` instead of `--no-software` adds a Python software package.
+- `--with-software --platform python` instead of `--no-software` adds a Python software package. Start without software if you can: the SDK's table engine `pt` does most table work in the workflow (filter, join, group, string length, regex), and a block without software runs on every backend. On a Kubernetes backend, software runs only as a docker image ([test-and-release.md](test-and-release.md), section 1).
 - Use your organization's npm scope and a short organization word (`--org-scope`). The block's id in a registry is `<org-scope>/<short-name>`; the npm scope is not part of it. Do not use `platforma-open` or `milaboratories`.
 - Do not start from the `platforma-block-boilerplate` repo or from `pl-dev create-block`. Both give an old layout without the kind.
 
@@ -78,11 +78,13 @@ There is no `pnpm build`. Use one of the named scripts:
 
 ## 4. Load The Block Into The Desktop App
 
+Try the block on the backend where its users work: usually your organization's DEV backend, which runs on Kubernetes in the cloud. Connect the Desktop App to it.
+
 1. In the Desktop App, open **Settings** and find **Development Block Folders**.
 2. Add the folder of your block repo, for example `blocks/my-block` in the workspace folder. One folder per line.
 3. Open a project and add a block. Your block appears with a `dev` tag.
 
-The app reads the built files from your disk, so build before you add the block.
+The app reads the built files from your disk, so build before you add the block. It sends the workflow and the model to the backend; the UI runs on your machine. A block without its own software runs on the remote backend straight from this build. A block with software needs docker images in a registry that the cluster can pull from: [test-and-release.md](test-and-release.md), section 1.
 
 ## 5. Change, Rebuild, See
 

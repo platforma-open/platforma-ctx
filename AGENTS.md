@@ -30,6 +30,7 @@ For a non-trivial change, write a short plan first and wait for the developer.
 
 - **Code wins.** If a guide in platforma-ctx disagrees with the code, follow the code and tell the developer which line of the guide is wrong.
 - **Say when you are not sure.** Write "not verified" instead of guessing.
+- **Remote first.** Users run blocks on a remote backend, on Kubernetes. Do table work with the SDK's table engine `pt`; custom software runs there only as a docker image (the skill, "Where Blocks Run").
 - **Do not publish.** Never run `pnpm publish`, `pnpm build:release`, `pnpm build:dev-remote`, a docker push, or a push to a shared branch, unless the developer asks for exactly that. Usually only CI publishes.
 - **Do not edit the reference code.** Public blocks in `blocks/` and the SDK in `core/platforma/` are for reading. Change only the developer's own blocks.
 - **Do not edit the copies.** `AGENTS.md`, `ORG.md` and `.claude/` at the top of this folder are copies, and `pl-ctx update` replaces them. Change the originals in `platforma-ctx/`.

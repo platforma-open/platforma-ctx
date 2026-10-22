@@ -22,6 +22,14 @@ Learn from real code. The workspace has the SDK source in `core/platforma/` and 
 
 Blocks share patterns that are wrong. When two blocks disagree, the SDK code decides. Prefer blocks that have a `kind/` folder and use `BlockModelV3`: older blocks use APIs the SDK no longer has.
 
+## Where Blocks Run
+
+Users run blocks on a remote backend: Platforma on Kubernetes in a cloud. Build for it from the start. A block that works only with a backend on the laptop is not finished.
+
+- Do table work in the workflow with the SDK's table engine `pt` (`import("@platforma-sdk/workflow-tengo:pt")`): filter, join, group, string length (`strLenChars`), regex (`strContains`, `strContainsAny`). It runs on every backend, with nothing to build. Example: `blocks/cdr3-spectratype/workflow/src/main.tpl.tengo`.
+- Write custom software only for what `pt` cannot do. Kubernetes runs software only as a docker image, and an image is made automatically only for `python` and `conda` software. A laptop build leaves the software on the laptop: after `pnpm test` or the watch command (binary only) the step fails on Kubernetes with "docker image is not specified"; after `pnpm build:dev-local` the image was built on the laptop but never pushed, so the cluster cannot pull it.
+- To try software on a remote backend, push dev images to a registry that the cluster can pull from (see `ORG.md`): `docker login <registry>`, then `env PL_BUILD_CHANNEL=dev PL_BUILD_VARIANT=docker PL_BUILD_LOCATION=remote PL_DEV_DOCKER_PUSH_URL=<registry>/<repo> pnpm exec turbo run build`. Add `PL_DEV_DOCKER_PULL_URL` when the cluster pulls from another address. Do not use `pnpm build:dev-remote`: it also builds and uploads binaries, and by default it pushes to MiLaboratories' registries.
+
 ## What A Block Is
 
 | Part | Language | Runs in | Job |
@@ -39,7 +47,7 @@ A block is finished when five things are defined, each one per column, page or s
 - the columns it reads: by spec, relative to the input the user picks, never by the id of the block that made them;
 - the columns it exports: their full specs, because other blocks find them by spec;
 - the output behind every page and plot, and what the page shows while that output is still empty;
-- the resources (CPU, memory, GPU) of every software step, with a formula when they grow with the input;
+- the resources (CPU, memory, GPU) of every software step, with a formula when they grow with the input, and its docker image;
 - what users read about it: `block.meta` without placeholders, and a description written by `references/block-description.md`.
 
 ## Traps The Code Will Not Tell You
@@ -84,6 +92,18 @@ Checked against `@platforma-sdk/model` 1.85.2, `workflow-tengo` 6.16.0, `block-t
 - A block's own id goes into the spec's domain (`pl7.app/blockId`). The SDK's `BlockScopedDomain` list and project templates expect it there.
 - Antibody regions: amino-acid FR4 is `FR4InFrame` from MiXCR Clonotyping and `FR4` from Import V(D)J Data; a germline-imputed region differs from an observed one only by the annotation `pl7.app/vdj/imputed`. More: `references/reference-blocks.md`.
 
+**Inputs**
+
+- The input is a dataset, picked by its anchor. The dropdown lists anchor columns only (`pl7.app/isAnchor: "true"`): one option per dataset, for bulk and single-cell data alike, never the dataset's CDR3 or other columns. Copy the check from `blocks/cdr3-spectratype/model/src/dataset.ts` (bulk `clonotypeKey`, single-cell `scClonotypeKey`, imported sets `variantKey`). Build the options in the model with `ctx.resultPool.getOptions(...)`, and leave out the block's own exports.
+- Every other column is found relative to the anchor, never by block id. In the workflow: `wf.createPBundleBuilder()`, `addAnchor("main", args.datasetRef)`, then `addSingle` or `addMulti` with `axes: [{ anchor: "main", idx: 1 }]` (`blocks/cdr3-spectratype/workflow/src/main.tpl.tengo`, `wf.prepare`). In the model: `ctx.resultPool.getAnchoredPColumns({ main: ref }, [...])`.
+- When a dataset has several matching columns (heavy and light chain, primary and secondary), the block picks them itself, or offers a second choice inside that dataset, such as the chain (`isPairedDataset` in the same `dataset.ts`).
+
+**Early results**
+
+- Options must appear while upstream blocks still compute. `getOptions` reads specs only. `getAnchoredPColumns` returns `undefined` until every matching column has its data; pass `{ dontWaitAllData: true }` when specs are enough (see the comment in `blocks/clonotype-convergence/model/src/facts.ts`).
+- Declare an output that the UI waits for with `.outputWithStatus(...)`. The UI then gets `{ ok, value, stable }`: `stable: false` means it is still computing, so show it as loading, not as empty.
+- `wf.body` runs only when everything that `wf.prepare` returns is ready, data included, and the block's exports appear only after that. Put into the bundle only the columns whose data the body reads.
+
 **Model and UI**
 
 - Do not copy a model output back into the block's `data` from the UI without a guard: the new `data` changes the output again, and it can loop. If you must (for example a default label), write only when the value really differs, as `blocks/vj-gene-usage/ui/src/app.ts` does.
@@ -101,6 +121,7 @@ Checked against `@platforma-sdk/model` 1.85.2, `workflow-tengo` 6.16.0, `block-t
 
 **A dev block on a remote Kubernetes backend**
 
+- This is the normal way to try a block: the Desktop App connected to the backend where users work, usually the organization's DEV backend.
 - Load it in the Desktop App: Settings, Development Block Folders. After a rebuild, the block shows **Update Dev Block**.
 - Workflow and model work. The UI works only on the developer's machine. Software works only as a docker image from a registry the backend trusts.
 

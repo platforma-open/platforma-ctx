@@ -12,7 +12,7 @@ The Desktop App can load a dev block while it is connected to a remote backend. 
 | UI | yes, but only on your machine. A colleague who opens the same project does not have your folder. Do not share projects that contain dev blocks. |
 | Software | on Kubernetes, only as a docker image that the cluster can pull |
 
-A local development build (`build:dev-local`, `pnpm test`, the watch command) stores software as a path on your laptop. That path does not exist on the cluster, so software steps fail there. A Kubernetes backend runs software only from images. So, for a block with software:
+A local development build (`build:dev-local`, `pnpm test`, the watch command) leaves the software on your laptop: a binary path, or a docker image that was built but not pushed. The cluster can use neither, so software steps fail there. A Kubernetes backend runs software only from images. So, for a block with software:
 
 1. Log in to your image registry: `docker login <your-registry-host>`.
 2. Build and push dev images to it:
@@ -21,7 +21,9 @@ A local development build (`build:dev-local`, `pnpm test`, the watch command) st
        PL_DEV_DOCKER_PUSH_URL=<your-registry-host>/<repo> \
        pnpm exec turbo run build
    ```
-3. The backend must trust your registry host, and the cluster's nodes must be able to pull from it. Both are set up by whoever runs your backend. Ask them before the first try.
+3. The backend must trust your registry host, and the cluster's nodes must be able to pull from it. Both are set up by whoever runs your backend. Ask them before the first try. If the cluster pulls from another address than the one you push to, also set `PL_DEV_DOCKER_PULL_URL`.
+
+Do not use `pnpm build:dev-remote` for this. It builds binaries as well and uploads them, and without these variables it pushes to MiLaboratories' registries.
 
 A block without software (only Tengo and the SDK's table engine) needs none of this. It runs on a remote backend directly from your dev build.
 
