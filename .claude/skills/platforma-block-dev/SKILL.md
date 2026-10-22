@@ -52,7 +52,7 @@ A block is finished when five things are defined, each one per column, page or s
 - the resources (CPU, memory, GPU) of every software step, with a formula when they grow with the input, and its docker image;
 - what users read about it: `block.meta` without placeholders, and a description written by `references/block-description.md`.
 
-Before you call it finished, try it three ways: on the remote backend; with a bulk and a single-cell dataset; and while the upstream block is still computing (the options must already be there).
+Before you call it finished, try it three ways: on the remote backend; with a bulk and a single-cell dataset; and while the upstream block is still computing (the options must already be there). A block that exports a filter: add Lead Selection and Sequence Space below it, and check that both list the filtered dataset.
 
 ## Traps The Code Will Not Tell You
 
@@ -92,13 +92,15 @@ Checked against `@platforma-sdk/model` 1.85.2, `workflow-tengo` 6.16.0, `block-t
 
 **Columns**
 
-- A subset filter column (`pl7.app/isSubset: "true"`) filters by which rows exist. A 0/1 column with a row for every key filters nothing.
+- A filter is a column with `pl7.app/isSubset: "true"` and a row only for each clonotype that passes. It filters by which rows exist: a 0/1 column with a row for every key filters nothing.
+- Key a filter by the dataset's clonotype axis alone: one axis, a copy of the anchor's `axesSpec[1]` with its domain. Give it a `pl7.app/label` that says what passes. Other blocks list it next to the dataset through the SDK's `buildDatasetOptions` (`core/platforma/sdk/model/src/components/PlDatasetSelector/`), and each block can narrow that list: Sequence Space keeps only filters on the clonotype axis alone (`blocks/clonotype-space/model/src/index.ts`, output `inputOptions`), while Lead Selection takes any subset. A filter keyed by sample and clonotype therefore shows in Lead Selection and is missing in Sequence Space.
+- When a criterion is per sample, for example abundance within a sample, decide how a clonotype passes overall (for example: in at least one sample), and write that rule in the description.
 - A block's own id goes into the spec's domain (`pl7.app/blockId`). The SDK's `BlockScopedDomain` list and project templates expect it there.
 - Antibody regions: amino-acid FR4 is `FR4InFrame` from MiXCR Clonotyping and `FR4` from Import V(D)J Data; a germline-imputed region differs from an observed one only by the annotation `pl7.app/vdj/imputed`. More: `references/reference-blocks.md`.
 
 **Inputs**
 
-- The input is a dataset, picked by its anchor. The dropdown lists anchor columns only (`pl7.app/isAnchor: "true"`): one option per dataset, for bulk and single-cell data alike, never the dataset's CDR3 or other columns. Copy the check from `blocks/cdr3-spectratype/model/src/dataset.ts` (bulk `clonotypeKey`; single-cell `scClonotypeKey`; imported sets `variantKey`, but only with the domain key `pl7.app/vdj/clonotypingRunId`, because other `variantKey` sets are peptides or other variants). Build the options in the model with `ctx.resultPool.getOptions(...)`, and leave out the block's own exports.
+- The input is a dataset, picked by its anchor. The dropdown lists anchor columns only (`pl7.app/isAnchor: "true"`): one option per dataset, for bulk and single-cell data alike, never the dataset's CDR3 or other columns. Copy the check from `blocks/cdr3-spectratype/model/src/dataset.ts` (bulk `clonotypeKey`; single-cell `scClonotypeKey`; imported sets `variantKey`, but only with the domain key `pl7.app/vdj/clonotypingRunId`, because other `variantKey` sets are peptides or other variants). When the block takes a dataset with an optional filter, use the SDK pair: `buildDatasetOptions(ctx, { primary, filter })` in the model and `PlDatasetSelector` in the UI, as `blocks/antibody-tcr-lead-selection` does (`model/src/index.ts`, output `datasetOptions`; `ui/src/pages/MainPage.vue`). The picked anchor is `data.input.primary.column`, the picked filter `data.input.primary.filter`. Otherwise build the options with `ctx.resultPool.getOptions(...)`. Leave out the block's own exports.
 - Every other column is found relative to the anchor, never by block id. In the workflow: `wf.createPBundleBuilder()`, `addAnchor("main", args.datasetRef)`, then `addSingle` or `addMulti` with `axes: [{ anchor: "main", idx: 1 }]` (`blocks/cdr3-spectratype/workflow/src/main.tpl.tengo`, `wf.prepare`). In the model: `ctx.resultPool.getAnchoredPColumns({ main: ref }, [...])`.
 - When a dataset has several matching columns (heavy and light chain, primary and secondary), the block picks them itself, or offers a second choice inside that dataset, such as the chain. Read the chain from the column specs (`pl7.app/vdj/scClonotypeChain` and `pl7.app/vdj/scClonotypeChain/index` in the domain), so the choice is there before the data. `isPairedDataset` in the same `dataset.ts` waits for data: do not copy it unchanged.
 
@@ -113,6 +115,7 @@ Checked against `@platforma-sdk/model` 1.85.2, `workflow-tengo` 6.16.0, `block-t
 - Do not copy a model output back into the block's `data` from the UI without a guard: the new `data` changes the output again, and it can loop. If you must (for example a default label), write only when the value really differs, as `blocks/vj-gene-usage/ui/src/app.ts` does.
 - `init` builds the data of a new block, and of a block the user resets. It does not change the stored data of existing blocks: add a migration to the data model for that.
 - The model runs in a sandbox: 8 MiB memory, 10 seconds per call. Heavy work belongs in the workflow.
+- Build every control from the UI SDK (`@platforma-sdk/ui-vue`), never from plain `<button>`, `<select>`, `<input>`, `<textarea>` or `<table>`: `PlBlockPage` for the page, `PlDatasetSelector` for a dataset and its filters, `PlDropdown`, `PlDropdownRef` and `PlDropdownMulti` for choices, `PlTextField`, `PlNumberField` and `PlTextArea` for values, `PlCheckbox`, `PlToggleSwitch` and `PlBtnGroup` for switches, `PlBtnPrimary` and `PlBtnSecondary` for actions, `PlSlideModal` for settings, `PlSectionSeparator`, `PlAlert`, and `PlAgDataTableV2` for tables. The full list: `core/platforma/lib/ui/uikit/src/components/` and `core/platforma/sdk/ui-vue/src/components/`. Copy the layout of a recent block, for example `blocks/antibody-tcr-lead-selection/ui/src/pages/MainPage.vue`.
 
 **Release**
 

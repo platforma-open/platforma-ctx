@@ -19,6 +19,8 @@ Every block below uses the current model API (`BlockModelV3.create` with a kind)
 | Reading region sequences (CDR3 and others), paired chains, plots | `blocks/cdr3-spectratype/` | `workflow/src/main.tpl.tengo`, `model/src/index.ts` |
 | Picking the input dataset by its anchor (bulk, single cell, imported sets); finding columns relative to the anchor | `blocks/cdr3-spectratype/` | `model/src/dataset.ts`, `workflow/src/main.tpl.tengo` (`wf.prepare`) |
 | Options that do not wait for upstream data (`dontWaitAllData`) | `blocks/clonotype-convergence/` | `model/src/facts.ts` |
+| Offering a dataset together with its filters (`buildDatasetOptions` + `PlDatasetSelector`) | `blocks/antibody-tcr-lead-selection/` | `model/src/index.ts` (output `datasetOptions`), `ui/src/pages/MainPage.vue` |
+| A consumer that accepts only filters on the clonotype axis | `blocks/clonotype-space/` | `model/src/index.ts` (output `inputOptions`) |
 | Running a packaged tool once per sample | `blocks/fastqc/` | `workflow/src/`, `model/src/index.ts` |
 | Turning a user's file into p-columns; a test that builds a dataset from a TSV | `blocks/xsv-import/` | `test/src/wf.test.ts` |
 | A per-clonotype score that other blocks can filter on; a subset filter as input; a results table | `blocks/repertoire-score/` | `model/src/index.ts`, `ui/src/pages/MainPage.vue` |
