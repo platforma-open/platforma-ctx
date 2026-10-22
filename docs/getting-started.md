@@ -114,7 +114,7 @@ Things to try on your first loop:
 | Python software | `software/tests/` | no | `pytest` in the software folder (not part of `pnpm test`) |
 | The whole block | `test/src/*.test.ts` | yes | `pnpm test` with `PL_ADDRESS` set |
 
-`pnpm test` runs format and lint checks first. If it fails on formatting, run `pnpm fmt`. Turbo caches test results: to run the tests again with nothing changed (for example against another backend), use `pnpm test --force`.
+`pnpm test` runs format and lint checks first. If it fails on formatting, run `pnpm fmt`. Turbo caches test results: to run the tests again with nothing changed (for example against another backend), use `pnpm test -- --force` (`pnpm test --force` fails with "Unknown option").
 
 A test file is part of `pnpm test` only when its package has a test script. The build tool adds that script when it sees test files: after you add the first `*.test.tengo` or `*.test.ts` to a package, run `pnpm exec block-tools structure refresh`, then `pnpm install`. Python tests are not part of `pnpm test`; run `pytest` in the software folder.
 

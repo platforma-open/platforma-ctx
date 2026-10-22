@@ -77,7 +77,7 @@ Checked against `@platforma-sdk/model` 1.85.2, `workflow-tengo` 6.16.0, `block-t
 
 **Test**
 
-- `pnpm test` runs format and lint checks first (`pnpm fmt` fixes formatting). Turbo caches results; add `--force` to run again. Python tests are separate (`pytest`).
+- `pnpm test` runs format and lint checks first (`pnpm fmt` fixes formatting). Turbo caches results; to run again, use `pnpm test -- --force` (`pnpm test --force` fails with "Unknown option"). Python tests are separate (`pytest`).
 - The first test file in a model, UI or workflow package runs only after `pnpm exec block-tools structure refresh` and `pnpm install` add that package's test script. A kind test needs its `test` script and `vitest` added by hand (see `blocks/vj-gene-usage/kind/package.json`).
 - The `test/` package that `structure init` creates is not connected to the block. Add the block as a `workspace:` dependency before writing a block test (pattern: `blocks/redefine-clonotypes/test/package.json`).
 - Block tests need a backend you can log in to with a password (or one without login), and a license. A backend with single sign-on only cannot run them; run one on the laptop: `references/local-backend.md`.
