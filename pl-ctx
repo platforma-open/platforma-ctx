@@ -45,7 +45,6 @@ CODEX_COPY=0
 PROBLEMS=0
 
 say() { printf '%s\n' "$*" >&2; }
-warn() { printf 'WARNING: %s\n' "$*" >&2; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 # Records a problem that does not stop the run; the command exits with 1 at the end.
 problem() { printf 'PROBLEM: %s\n' "$*" >&2; PROBLEMS=$((PROBLEMS + 1)); }
@@ -115,6 +114,26 @@ selected_verticals() {
   printf '%s' "${out# }"
 }
 
+# Reads every repo list once in this shell, so that a bad line stops the command here.
+# (Inside a pipeline or $(...), fail would stop only that subshell.)
+check_lists() {
+  local file
+  for file in "$REFERENCE_LIST" "$ORG_LIST" "$LOCAL_LIST"; do
+    read_list "$file" > /dev/null
+  done
+}
+
+# Fails on an unknown vertical, wherever it was set: the flag or one of the two files.
+check_verticals() {
+  local v
+  for v in $(selected_verticals); do
+    case " $KNOWN_VERTICALS " in
+      *" $v "*) ;;
+      *) fail "unknown vertical '$v' (from --vertical, $KIT_NAME/repos/verticals.txt or $KIT_NAME/org/verticals.txt); use one of: $KNOWN_VERTICALS all" ;;
+    esac
+  done
+}
+
 # True when a reference repo with these verticals should be cloned.
 wanted() {
   local tags="$1" selected="$2" t v
@@ -130,17 +149,21 @@ wanted() {
 # True when the dir is the top of a git checkout (a .git folder, or a .git file for worktrees).
 is_repo() { [ -e "$1/.git" ]; }
 
+# Records a problem and returns 1 when the checkout in dir is not a clone of url.
+check_origin() {
+  local path="$1" url="$2" dir="$3" origin
+  origin="$(git -C "$path" config --get remote.origin.url 2> /dev/null || true)"
+  [ "$(url_key "$origin")" = "$(url_key "$url")" ] && return 0
+  problem "$dir is a checkout of '${origin:-no origin}', expected '$url'"
+  return 1
+}
+
 # Clones one repo, or checks that the existing checkout is the expected repo.
 clone_one() {
   local url="$1" dir="$2" shallow="$3"
   local target="$WORKSPACE/$dir"
   if is_repo "$target"; then
-    local origin
-    origin="$(git -C "$target" config --get remote.origin.url 2> /dev/null || true)"
-    if [ "$(url_key "$origin")" != "$(url_key "$url")" ]; then
-      problem "$dir is a checkout of '${origin:-no origin}', expected '$url'"
-      return 0
-    fi
+    check_origin "$target" "$url" "$dir" || return 0
     if [ "$FULL_HISTORY" = 1 ] && [ "$(git -C "$target" rev-parse --is-shallow-repository)" = true ]; then
       if git -C "$target" fetch --quiet --unshallow; then
         say "  history $dir (now full)"
@@ -269,6 +292,8 @@ cmd_setup() {
     done
     printf '%s\n' "$VERTICAL_FLAG" > "$VERTICALS_FILE"
   fi
+  check_verticals
+  check_lists
   local selected
   selected="$(selected_verticals)"
   say "Verticals: ${selected:-all} (common blocks always)"
@@ -283,6 +308,9 @@ cmd_setup() {
     say "No repos of your own listed yet. Add them with '$PL_CTX add <url>', or list them in $KIT_NAME/org/repos.txt (team) or $KIT_NAME/repos/local.txt (only you)."
   fi
   install_files
+  if [ ! -f "$KIT_DIR/org/ORG.md" ]; then
+    say "No $KIT_NAME/org/ORG.md: new blocks keep placeholder organization, logo and support values. A team sets it up once: $KIT_NAME/org/README.md."
+  fi
   finish
   say ""
   say "Done. Next:"
@@ -299,11 +327,13 @@ cmd_update() {
     if out="$(git -C "$KIT_DIR" pull --ff-only --quiet 2>&1)"; then
       say "  pulled  (platforma-ctx itself)"
     else
-      warn "could not update platforma-ctx: ${out%%$'\n'*}"
+      problem "could not update platforma-ctx: ${out%%$'\n'*}"
     fi
   else
     say "  skip    (platforma-ctx itself has local changes)"
   fi
+  check_verticals
+  check_lists
   local entries
   entries="$(managed_repos)"
   local url dir shallow
@@ -314,6 +344,7 @@ cmd_update() {
       clone_one "$url" "$dir" "$shallow"
       continue
     fi
+    check_origin "$path" "$url" "$dir" || continue
     local state
     if ! state="$(git -C "$path" status --porcelain 2>&1)"; then
       problem "git status failed in $dir: ${state%%$'\n'*}"
@@ -334,7 +365,24 @@ cmd_update() {
   finish
 }
 
+# Prints one status line: the dir, its branch, and whether it has local changes.
+status_line() {
+  local path="$1" dir="$2" branch state
+  branch="$(git -C "$path" rev-parse --abbrev-ref HEAD 2> /dev/null || echo '?')"
+  if ! state="$(git -C "$path" status --porcelain 2> /dev/null)"; then
+    state="git status failed"
+  elif [ -n "$state" ]; then
+    state="changed"
+  else
+    state="clean"
+  fi
+  printf '  %-50s %-25s %s\n' "$dir" "$branch" "$state"
+}
+
 cmd_status() {
+  check_verticals
+  check_lists
+  status_line "$KIT_DIR" "$KIT_NAME"
   local entries
   entries="$(managed_repos)"
   local url dir shallow
@@ -345,22 +393,14 @@ cmd_status() {
       printf '  %-50s %s\n' "$dir" "not cloned"
       continue
     fi
-    local branch state
-    branch="$(git -C "$path" rev-parse --abbrev-ref HEAD 2> /dev/null || echo '?')"
-    if ! state="$(git -C "$path" status --porcelain 2> /dev/null)"; then
-      state="git status failed"
-    elif [ -n "$state" ]; then
-      state="changed"
-    else
-      state="clean"
-    fi
-    printf '  %-50s %-25s %s\n' "$dir" "$branch" "$state"
+    status_line "$path" "$dir"
   done <<< "$entries"
 }
 
 cmd_add() {
   [ $# -ge 1 ] || fail "usage: $PL_CTX add <git url or org/repo> [target dir]"
   check_workspace
+  check_lists
   local url
   url="$(to_url "$1")"
   local dir="${2:-blocks/$(basename "$(url_key "$url")")}"

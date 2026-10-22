@@ -7,7 +7,7 @@ description: Platforma block development. Use for any work on a Platforma block 
 
 ## How To Work
 
-Learn from real code. The workspace has the SDK source in `core/platforma/` and all 74 public blocks in `blocks/`. They are the best guide to how a block is written today.
+Learn from real code. The workspace has the SDK source in `core/platforma/` and the public blocks in `blocks/` (all 74, or the verticals chosen at setup). They are the best guide to how a block is written today.
 
 1. If `ORG.md` exists at the top of the workspace, read it. It wins over this file.
 2. For a non-trivial change, write a short plan first (which parts change, which columns the block reads and writes, how you will test) and wait for the developer.
@@ -34,12 +34,13 @@ Blocks share patterns that are wrong. When two blocks disagree, the SDK code dec
 
 Blocks never call each other. A block exports p-columns into the project; other blocks find them by spec.
 
-A block is finished when four things are defined, each one per column, page or step:
+A block is finished when five things are defined, each one per column, page or step:
 
 - the columns it reads: by spec, relative to the input the user picks, never by the id of the block that made them;
 - the columns it exports: their full specs, because other blocks find them by spec;
 - the output behind every page and plot, and what the page shows while that output is still empty;
-- the resources (CPU, memory, GPU) of every software step, with a formula when they grow with the input.
+- the resources (CPU, memory, GPU) of every software step, with a formula when they grow with the input;
+- what users read about it: `block.meta` without placeholders, and a description written by `references/block-description.md`.
 
 ## Traps The Code Will Not Tell You
 
@@ -53,6 +54,14 @@ Checked against `@platforma-sdk/model` 1.85.2, `workflow-tengo` 6.16.0, `block-t
 - Plain `pnpm watch` points software at a release. Use `env PL_BUILD_CHANNEL=dev PL_BUILD_VARIANT=binary PL_BUILD_LOCATION=local pnpm watch`.
 - `block-tools structure` owns some whole files (tsconfig, lint config, the two CI workflows) and the tasks and fields it writes in `turbo.json` and each `package.json`. It rewrites them on every refresh, also during `pnpm upgrade-sdk`; what you add beside them stays. `pnpm exec block-tools structure check` shows what it would change.
 - `pnpm check` and the build run `pl-tengo imports`, which deletes unused imports from Tengo files. `pnpm fmt` does not format Tengo.
+
+**Metadata and description**
+
+- `structure init` writes placeholders into `block/package.json`, `block.meta`: the title is the short name, the description is "<name> block", both logos are default images, the organization name is the `--org-scope` word, and its URL is `https://example.com`. `structure refresh` never changes `block.meta`, so nothing replaces them later. Replace every one before anyone else sees the block.
+- The organization (name, URL, logo), `support`, the block's `url` and its logo come from `ORG.md`. Never copy them from a public block: those name MiLaboratories. If `ORG.md` does not have them, ask the developer.
+- Paths in `block.meta` are relative to the `block/` folder: init puts the logos in `block/logos/` (`file:logos/block-logo.png`). Logos are square PNG files.
+- The Desktop App shows `organization.name` as "Developer", and `url`, `docs` and `support` in the side panel. Write `description` and `docs/description.md` (`"longDescription": "file:../docs/description.md"`) by `references/block-description.md`.
+- In the Add Block dialog, a dev block always shows "Value not available" in the version list: dev blocks have no versions. It is not an error.
 
 **Test**
 
@@ -104,6 +113,7 @@ Read one when you need it:
 | `references/failure-triage.md` | an error message or a block that fails |
 | `references/local-backend.md` | a backend on the laptop for block tests |
 | `references/reference-blocks.md` | which blocks to read for common tasks; the columns that producers export |
+| `references/block-description.md` | the short description and `docs/description.md`: what to write, in which order, and an example |
 
 For everything else, read the real blocks in `blocks/` and the SDK in `core/platforma/`.
 

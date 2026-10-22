@@ -2,9 +2,9 @@
 # Meaning With grepai" in README.md. Copy this file to .grepai/config.yaml in the workspace folder.
 #
 # It is what "grepai init -p ollama -b gob" writes (grepai 0.35.0), with more ignore rules:
-# lock files, changelogs, build output, binary and data files, and the copies of the skill
-# (.claude, .agents; the originals in platforma-ctx/ are indexed). Without them, the first index
-# spends most of its time on pnpm-lock.yaml files.
+# lock files, changelogs, build output, binary and data files, and every .claude and .agents
+# folder (assistants read the skill directly). Without them, the first index spends about half
+# of its time on pnpm-lock.yaml files.
 version: 1
 embedder:
     provider: ollama

@@ -18,9 +18,10 @@ After setup, the workspace folder looks like this. The folder itself is not a gi
 | `.claude/settings.json` | Claude Code permissions: builds and tests run without asking, publishing is blocked | copied |
 | `ORG.md` | your organization's conventions, if your copy of platforma-ctx has `org/ORG.md` | copied |
 | `core/platforma/` | the Platforma SDK source: model, UI library, workflow library, build tools, test helpers | cloned by `pl-ctx setup` |
-| `blocks/` | all public Platforma blocks (74 today), and your own block repos | cloned by `pl-ctx setup` |
+| `support/github-ci/` | the shared GitHub Actions workflows that the CI files of a block call | cloned by `pl-ctx setup` |
+| `blocks/` | the public Platforma blocks (all 74, or those of the verticals you choose), and your own block repos | cloned by `pl-ctx setup` |
 
-`pl-ctx setup` and `pl-ctx update` replace the copies every time, so change the originals in `platforma-ctx/`. Put personal Claude Code settings in `.claude/settings.local.json`; pl-ctx does not touch that file.
+`pl-ctx setup` and `pl-ctx update` replace the copies every time, so change the originals in `platforma-ctx/`. Put personal Claude Code settings in `.claude/settings.local.json`; pl-ctx does not touch that file. Setup also writes `.pl-ctx-workspace`, which marks the folder as a workspace, and `.vscode/extensions.json` if it is missing.
 
 ## Setup
 
@@ -35,7 +36,7 @@ git clone https://github.com/platforma-open/platforma-ctx.git
 ./platforma-ctx/pl-ctx setup
 ```
 
-`doctor` checks the tools and the network. `setup` clones the SDK and all public blocks into the workspace folder (last commit only, to save time; about 6 minutes the first time), then your own repos if you listed any. It stops if the workspace folder holds anything other than platforma-ctx, so it never writes into a home folder or a folder of other projects.
+`doctor` checks the tools and the network. `setup` clones the SDK and all public blocks into the workspace folder (last commit only, to save time; about 6 minutes the first time), then your own repos if you listed any. The first setup stops if the folder holds anything other than platforma-ctx, so it never writes into a home folder or a folder of other projects.
 
 To clone only the blocks of one area, pick a vertical:
 
@@ -55,7 +56,17 @@ Add one of your own block repos, and keep everything current:
 ./platforma-ctx/pl-ctx status
 ```
 
-A team usually keeps a private copy of platforma-ctx, with its repo list and conventions committed in `org/`. See [org/README.md](org/README.md).
+### For A Team: Set Up The Organization Once
+
+Blocks show their organization to every user: in the Desktop App, the logo, the "Developer" name, the URL and the support contact come from `block/package.json`. Without a setup, a new block keeps the placeholders that `block-tools structure init` writes: default logos, the `--org-scope` word as the developer, and `https://example.com`.
+
+A team keeps a private copy of platforma-ctx with an `org/` folder:
+
+- `org/ORG.md`, from `org/ORG.example.md`: organization name and URL, support contact, package scope, block registry, CI, review rules.
+- `org/organization-logo.png`, and optionally `org/block-logo.png` as the default logo for new blocks: square PNG files, 1024 x 1024.
+- `org/repos.txt` with the team's block repos, and `org/verticals.txt` with its vertical.
+
+Everyone then clones the private copy. Setup copies `ORG.md` to the top of the workspace, and assistants fill every new block from it. Steps: [org/README.md](org/README.md).
 
 ## Work With An AI Assistant
 

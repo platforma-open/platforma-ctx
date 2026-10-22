@@ -8,11 +8,12 @@ Work from this folder, not from inside a block repo. The folder itself is not a 
 
 | Path | What it is |
 |---|---|
-| `ORG.md` | the organization's conventions (package scope, repos, registry, CI). If it exists, read it first; it wins over everything else here. |
-| `blocks/` | all public Platforma blocks (read only), and the developer's own block repos (editable). Real, working code: learn from it. |
+| `ORG.md` | the organization's conventions: the name, URL, logo and support contact that every block shows, package scope, repos, registry, CI. If it exists, read it first; it wins over everything else here. |
+| `blocks/` | the public Platforma blocks (read only; all of them, or those of the verticals chosen at setup), and the developer's own block repos (editable). Real, working code: learn from it. |
 | `core/platforma/` | the Platforma SDK source (read only). The ground truth for every API. |
+| `support/github-ci/` | the shared GitHub Actions workflows that the CI files of a block call (read only) |
 | `.claude/skills/platforma-block-dev/SKILL.md` | how to work on a block: the loop, the commands, and the traps that the code does not show. **Read it before any block work.** |
-| `platforma-ctx/` | the setup script `pl-ctx`, the repo lists, guides for people (`docs/`), and the originals of `AGENTS.md`, `.claude/` and `ORG.md` (as `org/ORG.md`) |
+| `platforma-ctx/` | the setup script `pl-ctx`, the repo lists, guides for people (`docs/`), the organization's logos (`org/*.png`), and the originals of `AGENTS.md`, `.claude/` and `ORG.md` (as `org/ORG.md`) |
 
 ## How To Work
 
