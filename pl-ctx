@@ -1,0 +1,461 @@
+#!/usr/bin/env bash
+# platforma-ctx: sets up a workspace for building Platforma blocks.
+#
+# The workspace is the folder that platforma-ctx is cloned into. It is not a git repo itself:
+# platforma-ctx, the SDK and every block are separate git repos inside it. Run the commands
+# from the workspace folder:
+#
+#   ./platforma-ctx/pl-ctx setup            clone the SDK, the reference blocks and your own repos
+#   ./platforma-ctx/pl-ctx update           pull platforma-ctx, clone missing repos, pull the others
+#   ./platforma-ctx/pl-ctx status           branch and state of every repo
+#   ./platforma-ctx/pl-ctx add <url> [dir]  add one of your repos and clone it
+#   ./platforma-ctx/pl-ctx doctor           check tools and network access
+#
+# setup and update also copy AGENTS.md, .claude/ and org/ORG.md (as ORG.md) to the top of the
+# workspace, because assistants read them only there. The copies are replaced every time.
+#
+# Options for setup:
+#   --vertical V  clone only the blocks of vertical V: vdj, rnaseq, or all (default all);
+#                 common blocks always come. Several: --vertical vdj,rnaseq. Remembered in
+#                 repos/verticals.txt; a team default can live in org/verticals.txt.
+#   --full        full git history for the reference repos (default: last commit only)
+#   --no-local    skip your own repos (org/repos.txt and repos/local.txt)
+#   --codex       also copy platforma-ctx's skills to .agents/skills, where Codex looks for them
+#
+# Repo lists have one repo per line: <org/repo or git url> <target dir> [verticals].
+# Target dirs are relative to the workspace and contain no spaces.
+set -euo pipefail
+
+KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KIT_NAME="$(basename "$KIT_DIR")"
+WORKSPACE="$(dirname "$KIT_DIR")"
+WORKSPACE_MARKER="$WORKSPACE/.pl-ctx-workspace"
+# How to call this script from the workspace folder, for messages.
+PL_CTX="./$KIT_NAME/pl-ctx"
+REFERENCE_LIST="$KIT_DIR/repos/reference.txt"
+ORG_LIST="$KIT_DIR/org/repos.txt"
+LOCAL_LIST="$KIT_DIR/repos/local.txt"
+VERTICALS_FILE="$KIT_DIR/repos/verticals.txt"
+ORG_VERTICALS_FILE="$KIT_DIR/org/verticals.txt"
+KNOWN_VERTICALS="vdj rnaseq"
+VERTICAL_FLAG=""
+FULL_HISTORY=0
+SKIP_LOCAL=0
+CODEX_COPY=0
+PROBLEMS=0
+
+say() { printf '%s\n' "$*" >&2; }
+warn() { printf 'WARNING: %s\n' "$*" >&2; }
+fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+# Records a problem that does not stop the run; the command exits with 1 at the end.
+problem() { printf 'PROBLEM: %s\n' "$*" >&2; PROBLEMS=$((PROBLEMS + 1)); }
+
+# Turns "org/repo" into a GitHub HTTPS URL. Leaves URLs and scp-style addresses as they are.
+to_url() {
+  case "$1" in
+    *://* | *@*:*) printf '%s' "$1" ;;
+    *)
+      if printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'; then
+        printf 'https://github.com/%s.git' "$1"
+      else
+        printf '%s' "$1"
+      fi
+      ;;
+  esac
+}
+
+# Normalizes a repo address for comparison, so the HTTPS and SSH forms of one repo match:
+# https://github.com/org/repo.git, git@github.com:org/repo and ssh://git@github.com/org/repo
+# all become github.com/org/repo.
+url_key() {
+  printf '%s' "$1" | sed -E 's#^[a-z+]+://##; s#^[^@/]+@##; s#^([^/:]+):#\1/#; s#/+$##; s#\.git$##' | tr 'A-Z' 'a-z'
+}
+
+# Fails unless a target dir is a plain relative path inside the workspace.
+check_dir() {
+  local dir="$1" source="$2"
+  case "$dir" in
+    '') fail "no target dir in $source" ;;
+    /*) fail "target dir '$dir' in $source must be relative to the workspace" ;;
+    *' '*) fail "target dir '$dir' in $source must not contain spaces" ;;
+  esac
+  case "/$dir/" in
+    */../* | */./*) fail "target dir '$dir' in $source must not contain '.' or '..'" ;;
+  esac
+}
+
+# Reads a repo list and prints "url<TAB>dir<TAB>verticals" lines. Skips comments and blank
+# lines. Accepts Windows line endings and a last line without a newline.
+read_list() {
+  local file="$1"
+  [ -f "$file" ] || return 0
+  local src dir tags rest
+  while IFS=$' \t' read -r src dir tags rest || [ -n "${src:-}" ]; do
+    src="${src%$'\r'}"
+    dir="${dir%$'\r'}"
+    tags="${tags%$'\r'}"
+    case "$src" in '' | '#'*) continue ;; esac
+    check_dir "${dir:-}" "${file#"$KIT_DIR"/}"
+    printf '%s\t%s\t%s\n' "$(to_url "$src")" "$dir" "${tags:-}"
+  done < "$file"
+}
+
+# Prints the selected verticals as a space-separated list, or nothing for all.
+# Order: the --vertical flag, then repos/verticals.txt, then org/verticals.txt.
+selected_verticals() {
+  local value="$VERTICAL_FLAG"
+  if [ -z "$value" ] && [ -f "$VERTICALS_FILE" ]; then value="$(cat "$VERTICALS_FILE")"; fi
+  if [ -z "$value" ] && [ -f "$ORG_VERTICALS_FILE" ]; then value="$(grep -v '^#' "$ORG_VERTICALS_FILE" || true)"; fi
+  value="$(printf '%s' "$value" | tr ',\r\n' '   ')"
+  local v out=""
+  for v in $value; do
+    [ "$v" = all ] && { printf ''; return 0; }
+    out="$out $v"
+  done
+  printf '%s' "${out# }"
+}
+
+# True when a reference repo with these verticals should be cloned.
+wanted() {
+  local tags="$1" selected="$2" t v
+  [ -z "$selected" ] && return 0
+  [ -z "$tags" ] && return 0
+  for t in ${tags//,/ }; do
+    [ "$t" = common ] && return 0
+    for v in $selected; do [ "$t" = "$v" ] && return 0; done
+  done
+  return 1
+}
+
+# True when the dir is the top of a git checkout (a .git folder, or a .git file for worktrees).
+is_repo() { [ -e "$1/.git" ]; }
+
+# Clones one repo, or checks that the existing checkout is the expected repo.
+clone_one() {
+  local url="$1" dir="$2" shallow="$3"
+  local target="$WORKSPACE/$dir"
+  if is_repo "$target"; then
+    local origin
+    origin="$(git -C "$target" config --get remote.origin.url 2> /dev/null || true)"
+    if [ "$(url_key "$origin")" != "$(url_key "$url")" ]; then
+      problem "$dir is a checkout of '${origin:-no origin}', expected '$url'"
+      return 0
+    fi
+    if [ "$FULL_HISTORY" = 1 ] && [ "$(git -C "$target" rev-parse --is-shallow-repository)" = true ]; then
+      if git -C "$target" fetch --quiet --unshallow; then
+        say "  history $dir (now full)"
+      else
+        problem "could not fetch the full history of $dir"
+      fi
+      return 0
+    fi
+    say "  ok      $dir"
+    return 0
+  fi
+  if [ -e "$target" ]; then
+    problem "$dir exists but is not a git checkout"
+    return 0
+  fi
+  mkdir -p "$(dirname "$target")"
+  local args=(clone --quiet)
+  [ "$shallow" = 1 ] && args+=(--depth 1)
+  if git "${args[@]}" "$url" "$target"; then
+    say "  cloned  $dir"
+  else
+    problem "could not clone $url into $dir"
+  fi
+}
+
+# Prints every repo platforma-ctx manages as "url<TAB>dir<TAB>shallow".
+# Reference repos are shallow unless --full; your own repos always have full history.
+managed_repos() {
+  local shallow=1
+  [ "$FULL_HISTORY" = 1 ] && shallow=0
+  local selected url dir tags
+  selected="$(selected_verticals)"
+  read_list "$REFERENCE_LIST" | while IFS=$'\t' read -r url dir tags; do
+    wanted "$tags" "$selected" && printf '%s\t%s\t%s\n' "$url" "$dir" "$shallow"
+  done
+  if [ "$SKIP_LOCAL" = 0 ]; then
+    read_list "$ORG_LIST" | cut -f1,2 | sed 's/$/	0/'
+    read_list "$LOCAL_LIST" | cut -f1,2 | sed 's/$/	0/'
+  fi
+}
+
+# The first run needs a workspace folder that holds only platforma-ctx, so that setup never
+# writes into a home folder or a folder of other projects. The marker file records that the
+# folder is a workspace; later runs only check for it.
+check_workspace() {
+  [ -f "$WORKSPACE_MARKER" ] && return 0
+  local entry
+  for entry in "$WORKSPACE"/* "$WORKSPACE"/.[!.]* "$WORKSPACE"/..?*; do
+    [ -e "$entry" ] || continue
+    case "$(basename "$entry")" in
+      "$KIT_NAME" | .DS_Store) ;;
+      *) fail "$WORKSPACE holds other files. pl-ctx sets up the folder that platforma-ctx is cloned into, so that folder must be new. Make an empty folder, clone platforma-ctx into it, and run '$PL_CTX setup' from there." ;;
+    esac
+  done
+  printf '%s\n' "This folder is a platforma-ctx workspace, managed by $KIT_NAME/pl-ctx." > "$WORKSPACE_MARKER"
+}
+
+# Replaces one skill folder in a skills folder with platforma-ctx's copy.
+copy_skill() {
+  local skill="$1" skills_dir="$2" name
+  name="$(basename "$skill")"
+  mkdir -p "$skills_dir"
+  rm -rf "${skills_dir:?}/$name"
+  cp -R "$skill" "$skills_dir/$name"
+}
+
+# Assistants read AGENTS.md and .claude/ only at the top of the folder they work in, so they
+# are copied there from platforma-ctx. Copilot (VS Code, JetBrains, CLI) and Claude Code read
+# .claude/skills; Codex reads only .agents/skills, so Codex users get a second copy there.
+# Only platforma-ctx's own skills are replaced; other skills stay.
+install_files() {
+  cp "$KIT_DIR/AGENTS.md" "$WORKSPACE/AGENTS.md"
+  if [ -f "$KIT_DIR/org/ORG.md" ]; then cp "$KIT_DIR/org/ORG.md" "$WORKSPACE/ORG.md"; fi
+  mkdir -p "$WORKSPACE/.claude"
+  cp "$KIT_DIR/.claude/settings.json" "$WORKSPACE/.claude/settings.json"
+  # VS Code settings belong to the developer: copied only when missing.
+  if [ ! -f "$WORKSPACE/.vscode/extensions.json" ]; then
+    mkdir -p "$WORKSPACE/.vscode"
+    cp "$KIT_DIR/.vscode/extensions.json" "$WORKSPACE/.vscode/extensions.json"
+  fi
+  local skill codex=0
+  for skill in "$KIT_DIR"/.claude/skills/*/; do
+    [ -d "$skill" ] || continue
+    copy_skill "$skill" "$WORKSPACE/.claude/skills"
+    if [ "$CODEX_COPY" = 1 ] || [ -d "$WORKSPACE/.agents/skills/$(basename "$skill")" ]; then
+      copy_skill "$skill" "$WORKSPACE/.agents/skills"
+      codex=1
+    fi
+  done
+  say "  copied  AGENTS.md and .claude/ to the workspace folder"
+  if [ "$codex" = 1 ]; then say "  copied  .claude/skills to .agents/skills (for Codex)"; fi
+  return 0
+}
+
+# Exits with 1 when any problem was recorded, after a summary line.
+finish() {
+  if [ "$PROBLEMS" -gt 0 ]; then
+    say ""
+    say "$PROBLEMS problem(s) above. Fix them and run the command again."
+    exit 1
+  fi
+}
+
+cmd_setup() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --full) FULL_HISTORY=1 ;;
+      --no-local) SKIP_LOCAL=1 ;;
+      --codex) CODEX_COPY=1 ;;
+      --vertical)
+        [ $# -ge 2 ] || fail "--vertical needs a value: vdj, rnaseq or all"
+        VERTICAL_FLAG="$2"
+        shift
+        ;;
+      --vertical=*) VERTICAL_FLAG="${1#--vertical=}" ;;
+      *) fail "unknown option for setup: $1" ;;
+    esac
+    shift
+  done
+  command -v git > /dev/null || fail "git is not installed"
+  check_workspace
+  if [ -n "$VERTICAL_FLAG" ]; then
+    local v
+    for v in $(printf '%s' "$VERTICAL_FLAG" | tr ',' ' '); do
+      case " $KNOWN_VERTICALS all " in *" $v "*) ;; *) fail "unknown vertical '$v'; use one of: $KNOWN_VERTICALS all" ;; esac
+    done
+    printf '%s\n' "$VERTICAL_FLAG" > "$VERTICALS_FILE"
+  fi
+  local selected
+  selected="$(selected_verticals)"
+  say "Verticals: ${selected:-all} (common blocks always)"
+  local entries
+  entries="$(managed_repos)"
+  local url dir shallow
+  while IFS=$'\t' read -r url dir shallow; do
+    [ -n "$url" ] || continue
+    clone_one "$url" "$dir" "$shallow"
+  done <<< "$entries"
+  if [ "$SKIP_LOCAL" = 0 ] && [ ! -f "$ORG_LIST" ] && [ ! -f "$LOCAL_LIST" ]; then
+    say "No repos of your own listed yet. Add them with '$PL_CTX add <url>', or list them in $KIT_NAME/org/repos.txt (team) or $KIT_NAME/repos/local.txt (only you)."
+  fi
+  install_files
+  finish
+  say ""
+  say "Done. Next:"
+  say "  - open the workspace folder $WORKSPACE in VS Code for Copilot, or run 'claude' there for"
+  say "    Claude Code. Not platforma-ctx or a block folder: assistants read AGENTS.md only at the top."
+  say "  - read $KIT_NAME/docs/getting-started.md"
+}
+
+cmd_update() {
+  check_workspace
+  # platforma-ctx first: a new version may list new repos.
+  if [ -z "$(git -C "$KIT_DIR" status --porcelain 2> /dev/null)" ]; then
+    local out
+    if out="$(git -C "$KIT_DIR" pull --ff-only --quiet 2>&1)"; then
+      say "  pulled  (platforma-ctx itself)"
+    else
+      warn "could not update platforma-ctx: ${out%%$'\n'*}"
+    fi
+  else
+    say "  skip    (platforma-ctx itself has local changes)"
+  fi
+  local entries
+  entries="$(managed_repos)"
+  local url dir shallow
+  while IFS=$'\t' read -r url dir shallow; do
+    [ -n "$url" ] || continue
+    local path="$WORKSPACE/$dir"
+    if ! is_repo "$path"; then
+      clone_one "$url" "$dir" "$shallow"
+      continue
+    fi
+    local state
+    if ! state="$(git -C "$path" status --porcelain 2>&1)"; then
+      problem "git status failed in $dir: ${state%%$'\n'*}"
+      continue
+    fi
+    if [ -n "$state" ]; then
+      say "  skip    $dir (has local changes)"
+      continue
+    fi
+    local out
+    if out="$(git -C "$path" pull --ff-only --quiet 2>&1)"; then
+      say "  pulled  $dir"
+    else
+      problem "could not pull $dir: ${out%%$'\n'*}"
+    fi
+  done <<< "$entries"
+  install_files
+  finish
+}
+
+cmd_status() {
+  local entries
+  entries="$(managed_repos)"
+  local url dir shallow
+  while IFS=$'\t' read -r url dir shallow; do
+    [ -n "$url" ] || continue
+    local path="$WORKSPACE/$dir"
+    if ! is_repo "$path"; then
+      printf '  %-50s %s\n' "$dir" "not cloned"
+      continue
+    fi
+    local branch state
+    branch="$(git -C "$path" rev-parse --abbrev-ref HEAD 2> /dev/null || echo '?')"
+    if ! state="$(git -C "$path" status --porcelain 2> /dev/null)"; then
+      state="git status failed"
+    elif [ -n "$state" ]; then
+      state="changed"
+    else
+      state="clean"
+    fi
+    printf '  %-50s %-25s %s\n' "$dir" "$branch" "$state"
+  done <<< "$entries"
+}
+
+cmd_add() {
+  [ $# -ge 1 ] || fail "usage: $PL_CTX add <git url or org/repo> [target dir]"
+  check_workspace
+  local url
+  url="$(to_url "$1")"
+  local dir="${2:-blocks/$(basename "$(url_key "$url")")}"
+  check_dir "$dir" "the command line"
+  # If the repo is already listed, use the dir it is listed with.
+  local listed
+  listed="$({ read_list "$ORG_LIST"; read_list "$LOCAL_LIST"; } | while IFS=$'\t' read -r u d _; do
+    if [ "$(url_key "$u")" = "$(url_key "$url")" ]; then
+      printf '%s' "$d"
+      break
+    fi
+  done)"
+  if [ -n "$listed" ]; then
+    [ "$listed" = "$dir" ] || say "  $url is already listed with dir $listed; using it"
+    dir="$listed"
+  fi
+  clone_one "$url" "$dir" 0
+  finish
+  if [ -z "$listed" ]; then
+    printf '%s %s\n' "$url" "$dir" >> "$LOCAL_LIST"
+    say "  listed  $dir in $KIT_NAME/repos/local.txt"
+  fi
+}
+
+cmd_doctor() {
+  local ok=1
+  check() {
+    local name="$1" cmd="$2" hint="$3" out
+    if out="$(eval "$cmd" 2> /dev/null)" && [ -n "$out" ]; then
+      printf '  ok      %-24s %s\n' "$name" "$(printf '%s' "$out" | head -1)"
+    else
+      printf '  MISSING %-24s %s\n' "$name" "$hint"
+      ok=0
+    fi
+  }
+  reach() {
+    local name="$1" url="$2" hint="$3"
+    if curl -sfI -o /dev/null --max-time 15 "$url"; then
+      printf '  ok      %-24s %s\n' "$name" "reachable"
+    else
+      printf '  BLOCKED %-24s %s\n' "$name" "$hint"
+      ok=0
+    fi
+  }
+  echo "Tools:"
+  check git "git --version" "install git"
+  check node "node --version" "install Node.js 22.19 or newer (https://nodejs.org)"
+  check corepack "corepack --version" "comes with Node.js; run 'corepack enable'"
+  check pnpm "pnpm --version" "run 'corepack enable'"
+  if command -v node > /dev/null; then
+    local version major minor
+    version="$(node --version | sed 's/^v//')"
+    major="${version%%.*}"
+    minor="$(printf '%s' "$version" | cut -d. -f2)"
+    if [ "$major" -lt 22 ] || { [ "$major" -eq 22 ] && [ "$minor" -lt 19 ]; }; then
+      printf '  OLD     %-24s %s\n' node "$version is too old; the SDK needs 22.19 or newer"
+      ok=0
+    fi
+  fi
+  if command -v docker > /dev/null && docker info > /dev/null 2>&1; then
+    printf '  ok      %-24s %s\n' docker "running"
+  else
+    printf '  info    %-24s %s\n' docker "not running; needed only to build docker images (Python, conda or docker software)"
+  fi
+  if [ -n "${PL_LICENSE:-}${MI_LICENSE:-}${PL_LICENSE_FILE:-}${MI_LICENSE_FILE:-}" ] || [ -f "$HOME/.pl.license" ]; then
+    printf '  ok      %-24s %s\n' license "found"
+  else
+    printf '  info    %-24s %s\n' license "none (~/.pl.license or PL_LICENSE); needed only to run a local backend for block tests"
+  fi
+  echo "Network:"
+  check github "git ls-remote --heads https://github.com/milaboratory/platforma.git main | cut -c1-12" "cannot reach github.com over HTTPS (proxy?)"
+  check npm-registry "npm view @platforma-sdk/model version" "the npm registry you use cannot serve @platforma-sdk packages (proxy, or a private mirror without them?)"
+  reach registry.npmjs.org "https://registry.npmjs.org/@platforma-sdk%2fblock-tools" "cannot reach it; 'structure init' and 'upgrade-sdk' read SDK versions from this host directly, even if you use a mirror"
+  reach cdn.platforma.bio "https://cdn.platforma.bio/software/pl/macos/pl-4.3.2-arm64.tgz" "cannot reach it; 'pnpm install' of a block downloads a native module from this host"
+  reach blocks.pl-open.science "https://blocks.pl-open.science/v2/overview.json" "cannot reach it; the Desktop App reads the public block registry from this host"
+  if [ "$ok" = 1 ]; then
+    echo "All checks passed."
+  else
+    echo "Fix the items above, then run $PL_CTX setup."
+    return 1
+  fi
+}
+
+main() {
+  local cmd="${1:-help}"
+  [ $# -gt 0 ] && shift
+  case "$cmd" in
+    setup) cmd_setup "$@" ;;
+    update) cmd_update ;;
+    status) cmd_status ;;
+    add) cmd_add "$@" ;;
+    doctor) cmd_doctor ;;
+    help | -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "${BASH_SOURCE[0]}" ;;
+    *) fail "unknown command: $cmd (try $PL_CTX help)" ;;
+  esac
+}
+
+main "$@"

@@ -1,0 +1,90 @@
+# Public repos that pl-ctx setup clones. They are for reading, not for editing.
+# Format: <github org/repo> <target dir> [verticals]
+#
+# Repos without verticals are always cloned. A block is cloned when one of its verticals is
+# selected, or when it is "common". Select with pl-ctx setup --vertical vdj (or rnaseq,
+# or all); a team can set its default in org/verticals.txt.
+
+# The Platforma SDK: model, UI library, workflow library, build tools, test helpers.
+milaboratory/platforma                         core/platforma
+
+# Shared GitHub Actions workflows that the CI files of a block call.
+milaboratory/github-ci                         support/github-ci
+
+# All public Platforma blocks (platforma-open, not deprecated), as of 2026-10-22.
+# Newer blocks have a kind/ folder and use BlockModelV3; older ones use APIs that the SDK
+# no longer has. Prefer the newer ones as models.
+platforma-open/3D-Structure-Based-Liabilities           blocks/3D-Structure-Based-Liabilities           vdj
+platforma-open/3d-structure-clustering                  blocks/3d-structure-clustering                  vdj
+platforma-open/3d-structure-prediction                  blocks/3d-structure-prediction                  vdj
+platforma-open/antibody-sequence-liabilities            blocks/antibody-sequence-liabilities            vdj
+platforma-open/antibody-tcr-lead-selection              blocks/antibody-tcr-lead-selection              vdj
+platforma-open/antibody-variant-designer                blocks/antibody-variant-designer                vdj
+platforma-open/batch-correction                         blocks/batch-correction                         rnaseq
+platforma-open/blast                                    blocks/blast                                    common
+platforma-open/cdr3-spectratype                         blocks/cdr3-spectratype                         vdj
+platforma-open/cell-browser                             blocks/cell-browser                             rnaseq
+platforma-open/cell-ranger                              blocks/cell-ranger                              rnaseq
+platforma-open/cell-type-annotation                     blocks/cell-type-annotation                     rnaseq
+platforma-open/cellecta-drivermap-air-mixcr-clonotyping blocks/cellecta-drivermap-air-mixcr-clonotyping vdj
+platforma-open/clonotype-browser                        blocks/clonotype-browser                        vdj
+platforma-open/clonotype-clustering                     blocks/clonotype-clustering                     vdj
+platforma-open/clonotype-convergence                    blocks/clonotype-convergence                    vdj
+platforma-open/clonotype-distribution                   blocks/clonotype-distribution                   vdj
+platforma-open/clonotype-enrichment                     blocks/clonotype-enrichment                     vdj
+platforma-open/clonotype-space                          blocks/clonotype-space                          vdj
+platforma-open/cluster-markers                          blocks/cluster-markers                          rnaseq
+platforma-open/compositional-analysis                   blocks/compositional-analysis                   rnaseq
+platforma-open/demultiplex-fastq                        blocks/demultiplex-fastq                        common
+platforma-open/differential-clonotype-abundance         blocks/differential-clonotype-abundance         vdj
+platforma-open/differential-expression                  blocks/differential-expression                  rnaseq
+platforma-open/dimensionality-reduction                 blocks/dimensionality-reduction                 rnaseq
+platforma-open/embedding-clustering                     blocks/embedding-clustering                     vdj
+platforma-open/fastq-reader                             blocks/fastq-reader                             common
+platforma-open/fastqc                                   blocks/fastqc                                   common
+platforma-open/feature-integration                      blocks/feature-integration                      vdj
+platforma-open/functional-analysis                      blocks/functional-analysis                      rnaseq
+platforma-open/gene-browser                             blocks/gene-browser                             rnaseq
+platforma-open/generation-probability                   blocks/generation-probability                   vdj
+platforma-open/graph-maker                              blocks/graph-maker                              common
+platforma-open/humanization-score                       blocks/humanization-score                       vdj
+platforma-open/immune-assay-data                        blocks/immune-assay-data                        vdj
+platforma-open/immunewatch-clustcr                      blocks/immunewatch-clustcr                      vdj
+platforma-open/immunewatch-detect                       blocks/immunewatch-detect                       vdj
+platforma-open/immuno-match                             blocks/immuno-match                             vdj
+platforma-open/import-bulk-count-matrix                 blocks/import-bulk-count-matrix                 rnaseq
+platforma-open/import-sc-rnaseq-data                    blocks/import-sc-rnaseq-data                    rnaseq
+platforma-open/import-vdj-data                          blocks/import-vdj-data                          vdj
+platforma-open/leiden-clustering                        blocks/leiden-clustering                        rnaseq
+platforma-open/lineage-trees                            blocks/lineage-trees                            vdj
+platforma-open/makeblastdb                              blocks/makeblastdb                              common
+platforma-open/mixcr-amplicon-alignment                 blocks/mixcr-amplicon-alignment                 vdj
+platforma-open/mixcr-clonotyping                        blocks/mixcr-clonotyping                        vdj
+platforma-open/mixcr-library-builder                    blocks/mixcr-library-builder                    vdj
+platforma-open/mixcr-scfv-clonotyping                   blocks/mixcr-scfv-clonotyping                   vdj
+platforma-open/mixcr-shm-trees                          blocks/mixcr-shm-trees                          vdj
+platforma-open/paratope-clustering                      blocks/paratope-clustering                      vdj
+platforma-open/peptide-extraction                       blocks/peptide-extraction                       vdj
+platforma-open/pseudobulk-generation                    blocks/pseudobulk-generation                    rnaseq
+platforma-open/pseudotime-inference                     blocks/pseudotime-inference                     rnaseq
+platforma-open/rarefaction                              blocks/rarefaction                              vdj
+platforma-open/redefine-clonotypes                      blocks/redefine-clonotypes                      vdj
+platforma-open/repertoire-distance                      blocks/repertoire-distance                      vdj
+platforma-open/repertoire-diversity                     blocks/repertoire-diversity                     vdj
+platforma-open/repertoire-mutation-heatmap              blocks/repertoire-mutation-heatmap              vdj
+platforma-open/repertoire-score                         blocks/repertoire-score                         vdj
+platforma-open/samples-and-data                         blocks/samples-and-data                         common
+platforma-open/sc-differential-expression               blocks/sc-differential-expression               rnaseq
+platforma-open/sequence-embeddings                      blocks/sequence-embeddings                      vdj
+platforma-open/sequence-properties                      blocks/sequence-properties                      vdj
+platforma-open/sort-seq-analysis                        blocks/sort-seq-analysis                        vdj
+platforma-open/star-read-mapping                        blocks/star-read-mapping                        rnaseq
+platforma-open/synthetic-repertoire-profiler            blocks/synthetic-repertoire-profiler            vdj
+platforma-open/table                                    blocks/table                                    common
+platforma-open/tcr-clustering-gliph2                    blocks/tcr-clustering-gliph2                    vdj
+platforma-open/tcr-disco                                blocks/tcr-disco                                vdj
+platforma-open/titeseq-analysis                         blocks/titeseq-analysis                         vdj
+platforma-open/vdj-integration                          blocks/vdj-integration                          vdj
+platforma-open/vdj-multiomic-integration                blocks/vdj-multiomic-integration                vdj,rnaseq
+platforma-open/vj-gene-usage                            blocks/vj-gene-usage                            vdj
+platforma-open/xsv-import                               blocks/xsv-import                               common

@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./platforma-ctx/pl-ctx status)",
+      "Bash(./platforma-ctx/pl-ctx doctor)",
+      "Bash(pnpm install)",
+      "Bash(pnpm build:dev-local)",
+      "Bash(pnpm test)",
+      "Bash(pnpm check)",
+      "Bash(pnpm fmt)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(grepai search:*)",
+      "mcp__grepai"
+    ],
+    "ask": [
+      "Bash(git push:*)"
+    ],
+    "deny": [
+      "Bash(pnpm build:release:*)",
+      "Bash(pnpm build:dev-remote:*)",
+      "Bash(pnpm mark-stable:*)",
+      "Bash(pnpm publish:*)",
+      "Bash(npm publish:*)",
+      "Bash(docker push:*)"
+    ]
+  }
+}

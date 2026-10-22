@@ -1,0 +1,10 @@
+# Your personal repo list (the team list lives in org/repos.txt).
+/repos/local.txt
+
+# Your choice of verticals (pl-ctx setup --vertical ...).
+/repos/verticals.txt
+
+# Local tool state.
+.claude/settings.local.json
+node_modules/
+.DS_Store

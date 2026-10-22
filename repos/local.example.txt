@@ -1,0 +1,8 @@
+# Your own block repos. Copy this file to repos/local.txt (only for you)
+# or to org/repos.txt (for your whole team, in your private copy of platforma-ctx).
+#
+# One repo per line: <git url> <target dir>
+# Put blocks under blocks/, so the AI assistant finds them next to the reference blocks.
+#
+# git@github.com:my-org/my-first-block.git      blocks/my-first-block
+# https://github.com/my-org/my-second-block.git blocks/my-second-block
