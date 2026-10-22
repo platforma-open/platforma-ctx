@@ -14,14 +14,16 @@ The Desktop App can load a dev block while it is connected to a remote backend. 
 
 A local development build (`build:dev-local`, `pnpm test`, the watch command) leaves the software on your laptop: a binary path, or a docker image that was built but not pushed. The cluster can use neither, so software steps fail there. A Kubernetes backend runs software only from images. So, for a block with software:
 
-1. Log in to your image registry: `docker login <your-registry-host>`.
+1. Log in to your image registry: `docker login <your-registry-host>`. For an AWS ECR registry, skip this and write the push URL below as `ecr://<host>/<repo>`: the build then logs in with your AWS credentials.
 2. Build and push dev images to it:
    ```bash
    env PL_BUILD_CHANNEL=dev PL_BUILD_VARIANT=docker PL_BUILD_LOCATION=remote \
        PL_DEV_DOCKER_PUSH_URL=<your-registry-host>/<repo> \
        pnpm exec turbo run build
    ```
-3. The backend must trust your registry host, and the cluster's nodes must be able to pull from it. Both are set up by whoever runs your backend. Ask them before the first try. If the cluster pulls from another address than the one you push to, also set `PL_DEV_DOCKER_PULL_URL`.
+3. The backend must trust your registry host: the admins add it to the backend setting `PL_TRUSTED_DOCKER_REGISTRY`. An image from a host that is not trusted fails with a permanent error. The cluster's nodes must also be able to pull from it. Both are set up by whoever runs your backend. Ask them before the first try. If the cluster pulls from another address than the one you push to, also set `PL_DEV_DOCKER_PULL_URL`.
+
+To check what the cluster will run, open `software/dist/tengo/software/<entrypoint>.sw.json` in the software package. `docker.tag` is the image address that the cluster pulls. A `local` entry with a path on your laptop means a laptop build, which cannot run on the cluster.
 
 Do not use `pnpm build:dev-remote` for this. It builds binaries as well and uploads them, and without these variables it pushes to MiLaboratories' registries.
 
