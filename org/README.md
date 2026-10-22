@@ -7,8 +7,8 @@ A team usually keeps a private copy of platforma-ctx (a fork or a mirror in your
 | File | What it holds | Who reads it |
 |---|---|---|
 | `org/ORG.md` | Your conventions: organization name and URL, support contact, package scope, repo naming, registry URL, CI, review rules, backend environments | AI assistants read it before any block work (`pl-ctx setup` copies it to the top of the workspace as `ORG.md`); people read it on their first day |
-| `org/organization-logo.png` | Your organization's logo, a square PNG (1024 x 1024) | copied into every new block as `block/logos/organization-logo.png` |
-| `org/block-logo.png` | Optional: the logo for a new block until it has its own | copied into a new block as `block/logos/block-logo.png` |
+| `org/organization-logo.png` | Your organization's logo, a PNG: a wide wordmark or a square; the Desktop App draws it at most 196 x 64 pixels | copied into every new block as `block/logos/organization-logo.png` |
+| `org/block-logo.png` | Optional: the logo for a new block until it has its own, a square PNG (1024 x 1024) | copied into a new block as `block/logos/block-logo.png` |
 | `org/repos.txt` | Your block repos, one per line: `<git url> <target dir>` | `pl-ctx setup` clones them |
 | `org/verticals.txt` | The default set of public blocks to clone: `vdj`, `rnaseq` or `all` | `pl-ctx setup` |
 

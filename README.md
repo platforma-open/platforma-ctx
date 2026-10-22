@@ -63,7 +63,7 @@ Blocks show their organization to every user: in the Desktop App, the logo, the 
 A team keeps a private copy of platforma-ctx with an `org/` folder:
 
 - `org/ORG.md`, from `org/ORG.example.md`: organization name and URL, support contact, package scope, block registry, CI, review rules.
-- `org/organization-logo.png`, and optionally `org/block-logo.png` as the default logo for new blocks: square PNG files, 1024 x 1024.
+- `org/organization-logo.png` (a PNG wordmark or square), and optionally `org/block-logo.png` (a square PNG, 1024 x 1024) as the default logo for new blocks.
 - `org/repos.txt` with the team's block repos, and `org/verticals.txt` with its vertical.
 
 Everyone then clones the private copy. Setup copies `ORG.md` to the top of the workspace, and assistants fill every new block from it. Steps: [org/README.md](org/README.md).

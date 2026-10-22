@@ -59,7 +59,7 @@ Checked against `@platforma-sdk/model` 1.85.2, `workflow-tengo` 6.16.0, `block-t
 
 - `structure init` writes placeholders into `block/package.json`, `block.meta`: the title is the short name, the description is "<name> block", both logos are default images, the organization name is the `--org-scope` word, and its URL is `https://example.com`. `structure refresh` never changes `block.meta`, so nothing replaces them later. Replace every one before anyone else sees the block.
 - The organization (name, URL, logo), `support`, the block's `url` and its logo come from `ORG.md`. Never copy them from a public block: those name MiLaboratories. If `ORG.md` does not have them, ask the developer.
-- Paths in `block.meta` are relative to the `block/` folder: init puts the logos in `block/logos/` (`file:logos/block-logo.png`). Logos are square PNG files.
+- Paths in `block.meta` are relative to the `block/` folder: init puts the logos in `block/logos/` (`file:logos/block-logo.png`). Logos are PNG files: the block logo square, the organization logo a wordmark or a square.
 - The Desktop App shows `organization.name` as "Developer", and `url`, `docs` and `support` in the side panel. Write `description` and `docs/description.md` (`"longDescription": "file:../docs/description.md"`) by `references/block-description.md`.
 - In the Add Block dialog, a dev block always shows "Value not available" in the version list: dev blocks have no versions. It is not an error.
 

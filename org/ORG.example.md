@@ -29,7 +29,7 @@ Every block uses these values in `block/package.json`, `block.meta`. Users see t
 | `docs` | `<a URL of the block's documentation>`, or leave the field out |
 | `tags` | `<for example: airr, antibody>` |
 
-Logos are square PNG files, 1024 x 1024 like the defaults.
+Logos are PNG files. The block logo is square, 1024 x 1024 like the default. The organization logo is drawn at most 196 x 64 pixels at the top right of the Add Block dialog, so a wide wordmark works (public blocks use 1400 x 203) as well as a square.
 
 ## Where Blocks Are Published
 
