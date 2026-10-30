@@ -60,7 +60,7 @@ Checked against `@platforma-sdk/model` 1.85.2, `workflow-tengo` 6.16.0, `block-t
 
 **Start and build**
 
-- Start a block with `pnpm dlx @platforma-sdk/block-tools@latest structure init ./<dir> --npm-org @<scope> --org-scope <org> --short-name <name> --no-software --non-interactive`. Not `npx` (it fails). Not the `platforma-block-boilerplate` repo or `pl-dev create-block` (an old layout without the kind).
+- Start a block with `pnpm dlx @platforma-sdk/block-tools@latest structure init ./<dir> --npm-org @<scope> --org-scope <org> --short-name <name> --no-software --non-interactive`. Not `npx` (it fails). Not the `platforma-block-boilerplate` repo or `pl-dev create-block` (an old layout without the kind). block-tools 2.17.0 fails here with `ENOENT ... templates/static/root/.gitignore` (its package lacks the file); then use `@platforma-sdk/block-tools@2.16.17`.
 - The kind is mandatory. A new block does not compile until you replace `NEEDS_BLOCK_PARAMS` in `kind/src/index.ts` (`Record<string, never>` for no parameters). The model is `BlockModelV3.create({ dataModel, kind })` and needs `.templateParams(...)`; fill the scaffold's empty `.args(() => ({}))` and `.templateParams(() => ({}))`. A complete example: `blocks/vj-gene-usage/kind/src/index.ts` and `model/src/index.ts`.
 - There is no `pnpm build`. Use `pnpm build:dev-local` (needs Docker for Python, conda or docker software), or `env PL_BUILD_CHANNEL=dev PL_BUILD_VARIANT=binary PL_BUILD_LOCATION=local pnpm exec turbo run build` without Docker.
 - Plain `pnpm watch` points software at a release. Use `env PL_BUILD_CHANNEL=dev PL_BUILD_VARIANT=binary PL_BUILD_LOCATION=local pnpm watch`.

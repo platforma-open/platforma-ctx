@@ -6,6 +6,14 @@ platforma-ctx sets up a folder that an AI coding assistant works in: GitHub Copi
 
 A block is one analysis task in Platforma: its settings, its pipeline, its results and their QC. Its UI and model run in the Desktop App, its workflow runs on the Platforma backend, and its software (Python, R, Java, docker images) runs in jobs that the workflow starts.
 
+## Without A License
+
+You do not need a Platforma license to set up platforma-ctx, read the SDK and the public blocks, write blocks and build them. The unit tests of a block's workflow, model and UI also run without a license. An assistant in the workspace can do all of this.
+
+A license is needed to run a block, in the Desktop App or in block tests. Both need a Platforma backend, and every backend needs a license. Get one at [platforma.bio/getlicense](https://platforma.bio/getlicense): academic users get free access there, and companies request a business license or a trial.
+
+[repos/reference.txt](repos/reference.txt) lists the public blocks. What a block supports is in its code: on GitHub, and in `blocks/` after setup. For example, MiXCR Clonotyping lists 14 species in its settings, in [ui/src/SettingsPanel.vue](https://github.com/platforma-open/mixcr-clonotyping/blob/main/ui/src/SettingsPanel.vue). Among them are human, mouse, rat, rabbit, llama, alpaca, sheep and chicken (Gallus gallus). After setup, you can also ask the assistant: "Which species does MiXCR Clonotyping support?"
+
 ## What Is Inside
 
 After setup, the workspace folder looks like this. The folder itself is not a git repo. platforma-ctx, the SDK and every block are separate git repos inside it, so VS Code shows each repo on its own, and search covers all of them.
@@ -25,7 +33,16 @@ After setup, the workspace folder looks like this. The folder itself is not a gi
 
 ## Setup
 
-You need git, Node.js 22.19 or newer, and pnpm through corepack (`corepack enable`). Docker is needed only to build docker images of block software. Tested on macOS; on Windows, use Git Bash or WSL (not tested yet).
+You need git, Node.js 22.19 or newer, and pnpm through corepack 0.34.5 or newer. Docker is needed only to build docker images of block software. Tested on macOS; on Windows, use Git Bash or WSL (not tested yet).
+
+Corepack comes with Node.js. It starts the pnpm version that a block asks for, and the newest pnpm outside a block. New blocks use pnpm 12. A corepack older than 0.34.5 cannot start pnpm 11 or newer. Node.js 22 from 22.22.1 and Node.js 24 from 24.12 come with a corepack that can. Node.js 22.19, for example, comes with corepack 0.34.0, which cannot.
+
+Check with `corepack --version`. If it is older than 0.34.5, update Node.js, or run `npm install -g corepack@latest`. If `corepack --version` still shows the old version after that, your PATH finds the old corepack first; update Node.js instead. Then run:
+
+```bash
+corepack cache clean   # deletes the pnpm copies that an older corepack downloaded: they keep failing
+corepack enable        # turns on the pnpm command
+```
 
 Make a new, empty folder for the workspace, and clone platforma-ctx into it:
 

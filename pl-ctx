@@ -445,20 +445,53 @@ cmd_doctor() {
       ok=0
     fi
   }
+  # True when version $1 is older than version $2; both are x.y.z.
+  older() {
+    local a b i
+    IFS=. read -r -a a <<< "$1"
+    IFS=. read -r -a b <<< "$2"
+    for i in 0 1 2; do
+      [ "${a[i]:-0}" -lt "${b[i]:-0}" ] && return 0
+      [ "${a[i]:-0}" -gt "${b[i]:-0}" ] && return 1
+    done
+    return 1
+  }
   echo "Tools:"
   check git "git --version" "install git"
   check node "node --version" "install Node.js 22.19 or newer (https://nodejs.org)"
-  check corepack "corepack --version" "comes with Node.js; run 'corepack enable'"
-  check pnpm "pnpm --version" "run 'corepack enable'"
-  if command -v node > /dev/null; then
-    local version major minor
-    version="$(node --version | sed 's/^v//')"
-    major="${version%%.*}"
-    minor="$(printf '%s' "$version" | cut -d. -f2)"
-    if [ "$major" -lt 22 ] || { [ "$major" -eq 22 ] && [ "$minor" -lt 19 ]; }; then
-      printf '  OLD     %-24s %s\n' node "$version is too old; the SDK needs 22.19 or newer"
-      ok=0
+  if command -v node > /dev/null && older "$(node --version | sed 's/^v//')" 22.19.0; then
+    printf '  OLD     %-24s %s\n' node "$(node --version) is too old; the SDK needs 22.19 or newer"
+    ok=0
+  fi
+  check corepack "corepack --version" "run 'npm install -g corepack@latest', then 'corepack enable'"
+  # pnpm 11 and newer ship bin/pnpm.mjs. Corepack before 0.34.5 looks for bin/pnpm.cjs and fails
+  # with "Cannot find module". New blocks use pnpm 12, and corepack starts the newest pnpm outside
+  # a block. Node.js 22.19 comes with corepack 0.34.0; Node.js 22 from 22.22.1 and Node.js 24 from
+  # 24.12.0 come with 0.34.5 or newer.
+  local corepack_old=0
+  if command -v corepack > /dev/null && older "$(corepack --version)" 0.34.5; then
+    printf '  OLD     %-24s %s\n' corepack "$(corepack --version) cannot start pnpm 11 or newer; update Node.js to 24.12+ or 22.22.1+, or run 'npm install -g corepack@latest'; then 'corepack cache clean' and 'corepack enable'"
+    ok=0
+    corepack_old=1
+  fi
+  # pnpm runs in the workspace folder: like blocks/, it has no package.json, so corepack starts its
+  # default pnpm, as for 'pnpm dlx ... structure init'. Inside a block, it starts the block's own.
+  # No input from the terminal: corepack would ask there before a download, behind the capture.
+  local out error
+  if ! command -v pnpm > /dev/null; then
+    printf '  MISSING %-24s %s\n' pnpm "run 'corepack enable'"
+    ok=0
+  elif out="$(cd "$WORKSPACE" && pnpm --version 2>&1 < /dev/null)"; then
+    printf '  ok      %-24s %s\n' pnpm "$(printf '%s\n' "$out" | tail -1)"
+  else
+    error="$(printf '%s\n' "$out" | grep -m 1 'Error' || printf '%s\n' "$out" | head -1)"
+    # Corepack saves the start file of a package manager when it downloads it. A pnpm 11 or newer
+    # that an older corepack downloaded keeps bin/pnpm.cjs, also after corepack is updated.
+    if [ "$corepack_old" = 0 ]; then
+      case "$error" in *bin/pnpm.cjs*) error="an older corepack downloaded this pnpm; run 'corepack cache clean'" ;; esac
     fi
+    printf '  FAILED  %-24s %s\n' pnpm "$error"
+    ok=0
   fi
   if command -v docker > /dev/null && docker info > /dev/null 2>&1; then
     printf '  ok      %-24s %s\n' docker "running"

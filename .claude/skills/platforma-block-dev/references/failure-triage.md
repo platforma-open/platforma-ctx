@@ -25,7 +25,10 @@ package "software/<scope>/<package>/main/1.0.0.tgz" not found in any of endpoint
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| `Error: Cannot find module '.../corepack/v1/pnpm/<version>/bin/pnpm.cjs'` from any `pnpm` command | corepack before 0.34.5 cannot start pnpm 11 or newer. Node.js 22.19 comes with corepack 0.34.0; outside a block corepack starts the newest pnpm, and new blocks pin pnpm 12 | update Node.js to 24.12+ or 22.22.1+, or run `npm install -g corepack@latest`; then `corepack cache clean` (a pnpm that the old corepack downloaded keeps failing) and `corepack enable`. `./platforma-ctx/pl-ctx doctor` checks it |
 | `ENOENT: no such file or directory, open '.../templates/static/root/.gitignore'` from `npx @platforma-sdk/block-tools structure init` | npm renames `.gitignore` inside the installed package | run it with `pnpm dlx @platforma-sdk/block-tools@<version> structure init ...` |
+| the same `ENOENT` from `pnpm dlx @platforma-sdk/block-tools@latest structure init` | block-tools 2.17.0 lacks that file in its package | `pnpm dlx @platforma-sdk/block-tools@2.16.17 structure init ...` until a fixed release |
+| `Failed to replace env in config: ${NPMJS_TOKEN}` (pnpm 9) or `Ignored project-level auth setting "//registry.npmjs.org/:_authToken"` (pnpm 12) from `pnpm install` in a public block | the block's `.npmrc` reads a token that only MiLaboratories' CI has | nothing: the install works without it |
 | `pnpm install` fails while installing `@milaboratories/pframes-rs-node` (exact message not verified) | its install script downloads a native binary from `cdn.platforma.bio` and has no fallback | allow `cdn.platforma.bio` in the proxy or firewall |
 | `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command failed with EACCES: build` / `spawn build EACCES` | there is no `pnpm build` in a current block | use `pnpm build:dev-local` or another named script |
 | `TS2304: Cannot find name 'NEEDS_BLOCK_PARAMS'` | a new or upgraded block's kind is not filled in | set `BlockParams` in `kind/src/index.ts`; `Record<string, never>` for no parameters (see `blocks/vj-gene-usage/kind/src/index.ts`) |
