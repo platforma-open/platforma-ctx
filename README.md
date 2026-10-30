@@ -25,7 +25,16 @@ After setup, the workspace folder looks like this. The folder itself is not a gi
 
 ## Setup
 
-You need git, Node.js 22.19 or newer, and pnpm through corepack (`corepack enable`). Docker is needed only to build docker images of block software. Tested on macOS; on Windows, use Git Bash or WSL (not tested yet).
+You need git, Node.js 22.19 or newer, and pnpm through corepack 0.34.5 or newer. Docker is needed only to build docker images of block software. Tested on macOS; on Windows, use Git Bash or WSL (not tested yet).
+
+Corepack comes with Node.js. It starts the pnpm version that a block asks for, and the newest pnpm outside a block. New blocks use pnpm 12. A corepack older than 0.34.5 cannot start pnpm 11 or newer. Node.js 22 from 22.22.1 and Node.js 24 from 24.12 come with a corepack that can. Node.js 22.19, for example, comes with corepack 0.34.0, which cannot.
+
+Check with `corepack --version`. If it is older than 0.34.5, update Node.js, or run `npm install -g corepack@latest`. If `corepack --version` still shows the old version after that, your PATH finds the old corepack first; update Node.js instead. Then run:
+
+```bash
+corepack cache clean   # deletes the pnpm copies that an older corepack downloaded: they keep failing
+corepack enable        # turns on the pnpm command
+```
 
 Make a new, empty folder for the workspace, and clone platforma-ctx into it:
 

@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide takes you through one full loop: start or open a block, build it, load it into the Desktop App, change it, see the change, and test it. Every command here was run on 2026-10-21 against `@platforma-sdk/block-tools` 2.16.16 and `@platforma-sdk/model` 1.85.2, on macOS (Apple Silicon). Windows and Linux were not tested.
+This guide takes you through one full loop: start or open a block, build it, load it into the Desktop App, change it, see the change, and test it. Every command here was run on 2026-10-21 against `@platforma-sdk/block-tools` 2.16.16 and `@platforma-sdk/model` 1.85.2, on macOS (Apple Silicon). Sections 1 and 2 were run again on 2026-10-30, with corepack 0.36.0, pnpm 12.16.1 and block-tools 2.17.0 and 2.16.17. Windows and Linux were not tested.
 
 If your organization has an `org/ORG.md`, read it first. It names your package scope, your repos and your registry.
 
@@ -9,13 +9,15 @@ If your organization has an `org/ORG.md`, read it first. It names your package s
 | Tool | Version | Why |
 |---|---|---|
 | Node.js | 22.19 or newer | the SDK packages require it |
-| pnpm | through corepack (`corepack enable`); any 9.7+ works | each block pins its own pnpm version, and pnpm switches to it |
+| pnpm | through corepack 0.34.5 or newer (`corepack enable`) | each block pins its own pnpm version (9.12.0 in most public blocks, 12.16.1 in new ones), and corepack starts it. An older corepack, such as 0.34.0 in Node.js 22.19, cannot start pnpm 11 or newer and fails with `Cannot find module '.../bin/pnpm.cjs'` |
 | git | any recent | |
 | Docker | only for docker images | needed when a block has Python, conda or docker software and you build its image (images are built for `linux/amd64`, also on Apple Silicon) |
 | Desktop App | a recent release | blocks built with a newer SDK than the app supports do not load |
 | A Platforma license (`~/.pl.license`, or the `PL_LICENSE` variable) | only for a local backend | block tests need a backend you can log in to with a password, usually one on your laptop (section 6) |
 
-Run `./platforma-ctx/pl-ctx doctor` in the workspace folder. It checks the tools and the hosts a build needs: the npm registry you use (it must serve the `@platforma-sdk` packages), `github.com`, `cdn.platforma.bio` (`pnpm install` of a block downloads a native module from this host) and `blocks.pl-open.science` (the public block registry).
+Node.js 22 from 22.22.1 and Node.js 24 from 24.12 come with corepack 0.34.5 or newer. With an older corepack, update Node.js, or run `npm install -g corepack@latest`. Then run `corepack cache clean`, because the pnpm copies that the old corepack downloaded keep failing, and `corepack enable`.
+
+Run `./platforma-ctx/pl-ctx doctor` in the workspace folder. It checks the tools (also that corepack can start pnpm 12, and that pnpm starts outside a block, as `pnpm dlx` needs) and the hosts a build needs: the npm registry you use (it must serve the `@platforma-sdk` packages), `github.com`, `cdn.platforma.bio` (`pnpm install` of a block downloads a native module from this host) and `blocks.pl-open.science` (the public block registry).
 
 ## 2. Open An Existing Block, Or Start A New One
 
