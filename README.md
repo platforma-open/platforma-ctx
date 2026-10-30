@@ -6,6 +6,14 @@ platforma-ctx sets up a folder that an AI coding assistant works in: GitHub Copi
 
 A block is one analysis task in Platforma: its settings, its pipeline, its results and their QC. Its UI and model run in the Desktop App, its workflow runs on the Platforma backend, and its software (Python, R, Java, docker images) runs in jobs that the workflow starts.
 
+## Without A License
+
+You do not need a Platforma license to set up platforma-ctx, read the SDK and the public blocks, write blocks and build them. The unit tests of a block's workflow, model and UI also run without a license. An assistant in the workspace can do all of this.
+
+A license is needed to run a block, in the Desktop App or in block tests. Both need a Platforma backend, and every backend needs a license. Get one at [platforma.bio/getlicense](https://platforma.bio/getlicense): academic users get free access there, and companies request a business license or a trial.
+
+[repos/reference.txt](repos/reference.txt) lists the public blocks. What a block supports is in its code: on GitHub, and in `blocks/` after setup. For example, MiXCR Clonotyping lists 14 species in its settings, in [ui/src/SettingsPanel.vue](https://github.com/platforma-open/mixcr-clonotyping/blob/main/ui/src/SettingsPanel.vue). Among them are human, mouse, rat, rabbit, llama, alpaca, sheep and chicken (Gallus gallus). After setup, you can also ask the assistant: "Which species does MiXCR Clonotyping support?"
+
 ## What Is Inside
 
 After setup, the workspace folder looks like this. The folder itself is not a git repo. platforma-ctx, the SDK and every block are separate git repos inside it, so VS Code shows each repo on its own, and search covers all of them.
