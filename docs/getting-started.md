@@ -28,6 +28,8 @@ cd blocks/<name>
 pnpm install
 ```
 
+In a public block, `pnpm install` prints a warning about `${NPMJS_TOKEN}`: `Failed to replace env in config: ${NPMJS_TOKEN}` with pnpm 9, or `Ignored project-level auth setting "//registry.npmjs.org/:_authToken"` with pnpm 12. It comes from the block's `.npmrc`, which reads a token that only MiLaboratories' CI has. You do not need the token: the install works without it.
+
 **A new block.** Use the SDK's scaffolding tool. It writes the current layout, with all four parts:
 
 ```bash
@@ -40,6 +42,7 @@ pnpm install
 ```
 
 - Use `pnpm dlx`, not `npx`. With `npx` it fails with `ENOENT ... templates/static/root/.gitignore`.
+- block-tools 2.17.0 fails with the same error under `pnpm dlx` too: its package lacks that file. Until a fixed release, write `@platforma-sdk/block-tools@2.16.17` instead of `@latest`.
 - `--with-software --platform python` instead of `--no-software` adds a Python software package. Start without software if you can: the SDK's table engine `pt` does most table work in the workflow (filter, join, group, string length, regex), and a block without software runs on every backend. On a Kubernetes backend, software runs only as a docker image ([test-and-release.md](test-and-release.md), section 1).
 - Use your organization's npm scope and a short organization word (`--org-scope`). The block's id in a registry is `<org-scope>/<short-name>`; the npm scope is not part of it. Do not use `platforma-open` or `milaboratories`.
 - Do not start from the `platforma-block-boilerplate` repo or from `pl-dev create-block`. Both give an old layout without the kind.
